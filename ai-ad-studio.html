@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reel — AI Ad Storyboard Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E0E10;
+    --paper:#F5F0E8;
+    --signal:#FF5A2D;
+    --slate:#3A3A40;
+    --mint:#7CE0C6;
+    --line: rgba(245,240,232,0.14);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:var(--ink); color:var(--paper); font-family:'Inter',sans-serif; min-height:100vh;}
+  ::selection{background:var(--signal); color:var(--ink);}
+
+  /* focus visibility */
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
+    outline:2px solid var(--signal); outline-offset:2px;
+  }
+
+  .wrap{max-width:1180px; margin:0 auto; padding:32px 24px 80px;}
+
+  header.top{display:flex; align-items:baseline; justify-content:space-between; padding-bottom:28px; border-bottom:1px solid var(--line); margin-bottom:36px; gap:16px; flex-wrap:wrap;}
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand .mark{font-family:'JetBrains Mono'; font-size:13px; color:var(--signal); letter-spacing:0.08em;}
+  .brand h1{font-family:'Space Grotesk'; font-weight:700; font-size:22px; letter-spacing:-0.01em;}
+  .top-status{font-family:'JetBrains Mono'; font-size:12px; color:var(--paper); opacity:0.5;}
+
+  .stage-label{font-family:'JetBrains Mono'; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--signal); margin-bottom:10px; display:flex; align-items:center; gap:8px;}
+  .stage-label .num{color:var(--paper); opacity:0.4;}
+
+  /* Input form */
+  .panel{background:rgba(245,240,232,0.04); border:1px solid var(--line); border-radius:2px; padding:28px; margin-bottom:40px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  @media (max-width:720px){ .grid2{grid-template-columns:1fr;} }
+  label{display:block; font-size:12px; font-family:'JetBrains Mono'; opacity:0.6; margin-bottom:6px; letter-spacing:0.02em;}
+  input[type=text], textarea, select{
+    width:100%; background:rgba(0,0,0,0.25); border:1px solid var(--line); color:var(--paper);
+    padding:10px 12px; font-family:'Inter'; font-size:14px; border-radius:2px; transition:border-color 0.15s;
+  }
+  input[type=text]:focus, textarea:focus, select:focus{ border-color:var(--signal); }
+  textarea{resize:vertical; min-height:64px;}
+  .field{margin-bottom:0;}
+  .full{grid-column:1/-1;}
+
+  .filerow{display:flex; align-items:center; gap:12px; margin-top:6px;}
+  .filebtn{
+    border:1px dashed var(--line); background:transparent; color:var(--paper); opacity:0.8;
+    padding:8px 14px; font-size:13px; font-family:'Inter'; border-radius:2px; cursor:pointer;
+  }
+  .filebtn:hover{border-color:var(--signal); color:var(--signal); opacity:1;}
+  #photoPreview{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  #photoPreview img{width:48px; height:48px; object-fit:cover; border-radius:2px; border:1px solid var(--line);}
+
+  .actionrow{display:flex; justify-content:flex-end; margin-top:22px;}
+  .btn-primary{
+    background:var(--signal); color:var(--ink); border:none; font-family:'Space Grotesk'; font-weight:600;
+    font-size:14px; padding:12px 22px; border-radius:2px; cursor:pointer; letter-spacing:0.01em;
+    display:flex; align-items:center; gap:8px; transition:transform 0.1s, background 0.15s;
+  }
+  .btn-primary:hover{ background:#ff7248; }
+  .btn-primary:active{ transform:scale(0.98); }
+  .btn-primary:disabled{ background:var(--slate); color:rgba(245,240,232,0.4); cursor:not-allowed; }
+
+  .btn-ghost{
+    background:transparent; border:1px solid var(--line); color:var(--paper); font-family:'Inter'; font-size:13px;
+    padding:9px 16px; border-radius:2px; cursor:pointer;
+  }
+  .btn-ghost:hover{ border-color:var(--mint); color:var(--mint); }
+
+  /* Script output */
+  #scriptBlock{display:none;}
+  .script-card{background:rgba(245,240,232,0.04); border:1px solid var(--line); padding:24px 28px; margin-bottom:40px; border-radius:2px;}
+  .script-card h2{font-family:'Space Grotesk'; font-size:18px; margin-bottom:14px;}
+  #scriptText{font-family:'Inter'; font-size:14.5px; line-height:1.7; white-space:pre-wrap; color:rgba(245,240,232,0.92);}
+
+  /* Storyboard filmstrip */
+  #storyboardBlock{display:none;}
+  .filmstrip{display:flex; gap:18px; overflow-x:auto; padding:8px 4px 24px; scroll-snap-type:x proximity;}
+  .filmstrip::-webkit-scrollbar{height:8px;}
+  .filmstrip::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px;}
+
+  .frame{
+    flex:0 0 280px; scroll-snap-align:start; background:#161618; border-radius:2px; position:relative;
+    border:2px solid var(--line); transition:border-color 0.3s;
+  }
+  .frame.state-pending{ border-color:rgba(245,240,232,0.14); }
+  .frame.state-generating{ border-color:var(--signal); animation:pulse 1.4s ease-in-out infinite; }
+  .frame.state-ready{ border-color:var(--mint); }
+  @keyframes pulse{ 0%,100%{box-shadow:0 0 0 0 rgba(255,90,45,0.0);} 50%{box-shadow:0 0 0 4px rgba(255,90,45,0.12);} }
+
+  .frame .sprockets{position:absolute; top:0; bottom:0; left:0; width:10px; background-image:radial-gradient(circle, rgba(245,240,232,0.18) 2px, transparent 2px); background-size:10px 16px; background-position:0 4px;}
+  .frame .sprockets.right{left:auto; right:0;}
+
+  .frame-inner{padding:16px 22px;}
+  .frame-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;}
+  .frame-tc{font-family:'JetBrains Mono'; font-size:12px; color:var(--paper); opacity:0.55;}
+  .frame-status{font-family:'JetBrains Mono'; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; padding:2px 7px; border-radius:10px;}
+  .frame-status.pending{ color:rgba(245,240,232,0.4); border:1px solid var(--line); }
+  .frame-status.generating{ color:var(--signal); border:1px solid var(--signal); }
+  .frame-status.ready{ color:var(--mint); border:1px solid var(--mint); }
+
+  .frame-visual{
+    width:100%; aspect-ratio:16/10; background:#0a0a0b; border-radius:2px; margin-bottom:12px;
+    display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;
+  }
+  .frame-visual img{width:100%; height:100%; object-fit:cover;}
+  .frame-visual .placeholder-icon{opacity:0.25; font-size:22px;}
+
+  .frame-desc{font-size:13px; line-height:1.55; opacity:0.85; margin-bottom:6px; min-height:60px;}
+  .frame-vo{font-size:12px; font-style:italic; opacity:0.55; line-height:1.5; border-left:2px solid var(--line); padding-left:8px; margin-bottom:14px;}
+
+  .frame-actions{display:flex; gap:8px;}
+  .micro-btn{
+    flex:1; background:transparent; border:1px solid var(--line); color:var(--paper); font-size:11.5px;
+    padding:7px 8px; border-radius:2px; cursor:pointer; font-family:'Inter'; transition:all 0.15s;
+  }
+  .micro-btn:hover{ border-color:var(--paper); }
+  .micro-btn.video-btn{ border-color:rgba(255,90,45,0.4); color:var(--signal); }
+  .micro-btn.video-btn:hover{ background:rgba(255,90,45,0.1); border-color:var(--signal); }
+  .micro-btn:disabled{ opacity:0.35; cursor:not-allowed; }
+
+  /* Video integration panel */
+  #videoPanel{display:none; background:rgba(255,90,45,0.06); border:1px solid rgba(255,90,45,0.3); border-radius:2px; padding:24px 28px; margin-bottom:40px;}
+  #videoPanel h3{font-family:'Space Grotesk'; font-size:16px; margin-bottom:10px; color:var(--signal);}
+  #videoPanel p{font-size:13.5px; line-height:1.6; opacity:0.85; margin-bottom:14px;}
+  #videoPanel code{background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-size:12px;}
+  .keyrow{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;}
+  .keyrow select{max-width:200px;}
+  .keyrow input{flex:1; min-width:200px;}
+
+  .empty-note{font-size:13px; opacity:0.45; font-family:'JetBrains Mono'; text-align:center; padding:40px 0;}
+
+  footer{margin-top:60px; padding-top:24px; border-top:1px solid var(--line); font-size:12px; opacity:0.4; font-family:'JetBrains Mono'; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+
+  @media (prefers-reduced-motion: reduce){
+    .frame.state-generating{ animation:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <span class="mark">REEL /</span>
+      <h1>AI Ad Storyboard Studio</h1>
+    </div>
+    <div class="top-status" id="topStatus">stage: input</div>
+  </header>
+
+  <!-- STAGE 1: INPUT -->
+  <div class="stage-label"><span class="num">01</span> Product Input</div>
+  <div class="panel">
+    <div class="grid2">
+      <div class="field">
+        <label for="prodName">Product name</label>
+        <input type="text" id="prodName" placeholder="e.g. Atlas Trail Backpack">
+      </div>
+      <div class="field">
+        <label for="prodTone">Tone</label>
+        <select id="prodTone">
+          <option>Energetic / upbeat</option>
+          <option>Premium / minimal</option>
+          <option>Playful / funny</option>
+          <option>Emotional / heartfelt</option>
+          <option>Bold / disruptive</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label for="prodDesc">Product description</label>
+        <textarea id="prodDesc" placeholder="What does it do, what makes it different, key features..."></textarea>
+      </div>
+      <div class="field">
+        <label for="prodAudience">Target audience</label>
+        <input type="text" id="prodAudience" placeholder="e.g. outdoor enthusiasts, 25-40">
+      </div>
+      <div class="field">
+        <label for="prodLength">Ad length</label>
+        <select id="prodLength">
+          <option value="15">15 seconds (3 shots)</option>
+          <option value="30" selected>30 seconds (5 shots)</option>
+          <option value="60">60 seconds (8 shots)</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>Reference photos (optional)</label>
+        <div class="filerow">
+          <button class="filebtn" id="photoBtn" type="button">+ Add photos</button>
+          <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
+        </div>
+        <div id="photoPreview"></div>
+      </div>
+    </div>
+    <div class="actionrow">
+      <button class="btn-primary" id="genScriptBtn">Generate script →</button>
+    </div>
+  </div>
+
+  <!-- STAGE 2: SCRIPT -->
+  <div id="scriptBlock">
+    <div class="stage-label"><span class="num">02</span> Ad Script</div>
+    <div class="script-card">
+      <h2 id="scriptTitle">Untitled spot</h2>
+      <div id="scriptText"></div>
+      <div class="actionrow">
+        <button class="btn-ghost" id="regenScriptBtn">↻ Regenerate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 3: STORYBOARD -->
+  <div id="storyboardBlock">
+    <div class="stage-label"><span class="num">03</span> Storyboard — shots & visuals</div>
+    <div class="filmstrip" id="filmstrip"></div>
+  </div>
+
+  <!-- STAGE 4: VIDEO INTEGRATION -->
+  <div id="videoPanel">
+    <h3>⚠ Video generation — connect your own API</h3>
+    <p>
+      Turning these shots into actual moving video clips requires a text/image-to-video API
+      (e.g. Runway, Luma Dream Machine, Pika, or Kling). These services require server-side
+      authentication and billing, so this static page can't embed a working key for you —
+      you'll need to create a free account, grab an API key, and paste it below. Each shot's
+      <strong>"Generate Video"</strong> button will then call that provider directly from your browser.
+    </p>
+    <p>
+      Most providers offer free credits to start (typically 5–25 generations). This is the
+      single integration point in the whole app you need to wire up — everything else
+      (script, storyboard, images) already works.
+    </p>
+    <div class="keyrow">
+      <select id="videoProvider">
+        <option value="luma">Luma Dream Machine</option>
+        <option value="runway">Runway Gen-3/4</option>
+        <option value="pika">Pika Labs</option>
+      </select>
+      <input type="text" id="videoApiKey" placeholder="Paste your API key here">
+      <button class="btn-ghost" id="saveKeyBtn">Save for this session</button>
+    </div>
+  </div>
+
+  <footer>
+    <span>Reel · prototype build</span>
+    <span id="footStatus">no script generated yet</span>
+  </footer>
+</div>
+
+<script>
+const state = {
+  photos: [],
+  script: null,
+  shots: [],
+  videoKey: null,
+  videoProvider: 'luma'
+};
+
+// ---------- Photo upload ----------
+const photoBtn = document.getElementById('photoBtn');
+const photoInput = document.getElementById('photoInput');
+const photoPreview = document.getElementById('photoPreview');
+
+photoBtn.addEventListener('click', () => photoInput.click());
+photoInput.addEventListener('change', (e) => {
+  for (const file of e.target.files) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      state.photos.push(ev.target.result);
+      const img = document.createElement('img');
+      img.src = ev.target.result;
+      photoPreview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// ---------- Script generation ----------
+const genScriptBtn = document.getElementById('genScriptBtn');
+const regenScriptBtn = document.getElementById('regenScriptBtn');
+const scriptBlock = document.getElementById('scriptBlock');
+const storyboardBlock = document.getElementById('storyboardBlock');
+const videoPanel = document.getElementById('videoPanel');
+const topStatus = document.getElementById('topStatus');
+const footStatus = document.getElementById('footStatus');
+
+function getInputs(){
+  return {
+    name: document.getElementById('prodName').value.trim() || 'Untitled product',
+    desc: document.getElementById('prodDesc').value.trim(),
+    audience: document.getElementById('prodAudience').value.trim() || 'general audience',
+    tone: document.getElementById('prodTone').value,
+    lengthSec: parseInt(document.getElementById('prodLength').value, 10)
+  };
+}
+
+function shotCountFor(lengthSec){
+  if (lengthSec === 15) return 3;
+  if (lengthSec === 60) return 8;
+  return 5;
+}
+
+async function generateScript(){
+  const inputs = getInputs();
+  if (!inputs.desc) {
+    alert('Add a product description first — the script needs something to work with.');
+    return;
+  }
+  genScriptBtn.disabled = true;
+  genScriptBtn.textContent = 'Writing script…';
+  topStatus.textContent = 'stage: script generation';
+
+  const shotCount = shotCountFor(inputs.lengthSec);
+
+  const prompt = `You are an expert video ad copywriter and director. Create a ${inputs.lengthSec}-second video ad script for this product.
+
+Product name: ${inputs.name}
+Description: ${inputs.desc}
+Target audience: ${inputs.audience}
+Tone: ${inputs.tone}
+Number of shots: ${shotCount}
+
+Respond ONLY with valid JSON, no markdown fences, no preamble, in exactly this shape:
+{
+  "title": "short punchy title for this ad concept",
+  "full_script": "the full voiceover/dialogue script as continuous text, formatted naturally with line breaks between sections",
+  "shots": [
+    {
+      "timecode": "00:00",
+      "visual_description": "detailed visual description of what's on screen, written for a video generation AI (specific camera angle, action, setting, lighting)",
+      "voiceover": "the voiceover or on-screen text line for this shot, empty string if none"
+    }
+  ]
+}
+The shots array must have exactly ${shotCount} items with sequential timecodes spaced evenly across ${inputs.lengthSec} seconds. Make visual_description vivid and specific enough that an AI video generator could render it directly.`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 2000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await response.json();
+    const text = data.content.map(b => b.text || "").join("");
+    const clean = text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean);
+
+    state.script = parsed;
+    state.shots = parsed.shots.map(s => ({...s, status: 'pending', imageUrl: null, videoUrl: null}));
+
+    renderScript();
+    renderStoryboard();
+    scriptBlock.style.display = 'block';
+    storyboardBlock.style.display = 'block';
+    videoPanel.style.display = 'block';
+    topStatus.textContent = 'stage: storyboard ready';
+    footStatus.textContent = `${state.shots.length} shots generated`;
+
+    // auto-generate images for all shots
+    generateAllImages();
+
+  } catch (err) {
+    console.error(err);
+    alert('Script generation failed. Check the console for details and try again.');
+    topStatus.textContent = 'stage: error';
+  } finally {
+    genScriptBtn.disabled = false;
+    genScriptBtn.textContent = 'Generate script →';
+  }
+}
+
+function renderScript(){
+  document.getElementById('scriptTitle').textContent = state.script.title;
+  document.getElementById('scriptText').textContent = state.script.full_script;
+}
+
+genScriptBtn.addEventListener('click', generateScript);
+regenScriptBtn.addEventListener('click', generateScript);
+
+// ---------- Storyboard rendering ----------
+const filmstrip = document.getElementById('filmstrip');
+
+function renderStoryboard(){
+  filmstrip.innerHTML = '';
+  state.shots.forEach((shot, idx) => {
+    const frame = document.createElement('div');
+    frame.className = `frame state-${shot.status}`;
+    frame.id = `frame-${idx}`;
+    frame.innerHTML = `
+      <div class="sprockets"></div>
+      <div class="sprockets right"></div>
+      <div class="frame-inner">
+        <div class="frame-head">
+          <span class="frame-tc">${shot.timecode}</span>
+          <span class="frame-status ${shot.status}" id="status-${idx}">${shot.status}</span>
+        </div>
+        <div class="frame-visual" id="visual-${idx}">
+          <span class="placeholder-icon">▢</span>
+        </div>
+        <div class="frame-desc">${shot.visual_description}</div>
+        ${shot.voiceover ? `<div class="frame-vo">"${shot.voiceover}"</div>` : '<div class="frame-vo">&nbsp;</div>'}
+        <div class="frame-actions">
+          <button class="micro-btn img-btn" data-idx="${idx}">↻ Image</button>
+          <button class="micro-btn video-btn" data-idx="${idx}">▶ Generate video</button>
+        </div>
+      </div>
+    `;
+    filmstrip.appendChild(frame);
+  });
+
+  document.querySelectorAll('.img-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => generateImageForShot(parseInt(e.target.dataset.idx)));
+  });
+  document.querySelectorAll('.video-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => generateVideoForShot(parseInt(e.target.dataset.idx)));
+  });
+}
+
+function setShotStatus(idx, status){
+  state.shots[idx].status = status;
+  const frame = document.getElementById(`frame-${idx}`);
+  const statusEl = document.getElementById(`status-${idx}`);
+  if (frame) frame.className = `frame state-${status}`;
+  if (statusEl) { statusEl.className = `frame-status ${status}`; statusEl.textContent = status; }
+}
+
+// ---------- Image generation per shot ----------
+// Uses Claude to expand the visual description into a refined image prompt,
+// then renders via an image API. Swap IMAGE_API_ENDPOINT for your provider of choice.
+async function generateImageForShot(idx){
+  const shot = state.shots[idx];
+  setShotStatus(idx, 'generating');
+
+  try {
+    // NOTE: Plug your chosen image generation API here (e.g. an image API key you hold).
+    // This placeholder uses a deterministic placeholder image service so the UI flow
+    // is fully visible and testable end-to-end before you wire in a real provider.
+    const seed = encodeURIComponent(shot.visual_description.slice(0, 40));
+    const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(shot.visual_description)}?width=640&height=400&nologo=true&seed=${idx}`;
+
+    const visualEl = document.getElementById(`visual-${idx}`);
+    const img = new Image();
+    img.onload = () => {
+      visualEl.innerHTML = '';
+      visualEl.appendChild(img);
+      setShotStatus(idx, 'ready');
+    };
+    img.onerror = () => {
+      visualEl.innerHTML = '<span class="placeholder-icon">⚠ image failed</span>';
+      setShotStatus(idx, 'pending');
+    };
+    img.src = imgUrl;
+    img.alt = shot.visual_description;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+
+  } catch (err) {
+    console.error(err);
+    setShotStatus(idx, 'pending');
+  }
+}
+
+function generateAllImages(){
+  state.shots.forEach((_, idx) => generateImageForShot(idx));
+}
+
+// ---------- Video generation per shot (integration slot) ----------
+function generateVideoForShot(idx){
+  if (!state.videoKey) {
+    videoPanel.scrollIntoView({behavior:'smooth', block:'center'});
+    document.getElementById('videoApiKey').focus();
+    alert('Add your video API key in the panel below first — this app doesn\\'t ship with one built in.');
+    return;
+  }
+
+  const shot = state.shots[idx];
+  setShotStatus(idx, 'generating');
+
+  // INTEGRATION POINT:
+  // Replace this block with a real call to your chosen provider, for example:
+  //
+  // Luma Dream Machine:
+  //   POST https://api.lumalabs.ai/dream-machine/v1/generations
+  //   headers: { Authorization: `Bearer ${state.videoKey}` }
+  //   body: { prompt: shot.visual_description, keyframes: { frame0: { type: "image", url: shot.imageUrl } } }
+  //
+  // Runway Gen-3/4:
+  //   POST https://api.runwayml.com/v1/image_to_video
+  //   headers: { Authorization: `Bearer ${state.videoKey}` }
+  //   body: { promptImage: shot.imageUrl, promptText: shot.visual_description, model: "gen3a_turbo" }
+  //
+  // Both are async — they return a job id you then poll for completion.
+  // CORS note: most of these APIs block direct browser calls; you'll likely need
+  // a tiny serverless proxy (e.g. a Cloudflare Worker or Vercel function) to relay
+  // the request with your key attached server-side instead of from this page directly.
+
+  setTimeout(() => {
+    alert(`This is the integration point for ${state.videoProvider}. Wire in the real API call here using your saved key. See the code comments in generateVideoForShot() for exact request shapes for Luma and Runway.`);
+    setShotStatus(idx, 'pending');
+  }, 600);
+}
+
+// ---------- Video API key handling ----------
+document.getElementById('saveKeyBtn').addEventListener('click', () => {
+  const key = document.getElementById('videoApiKey').value.trim();
+  const provider = document.getElementById('videoProvider').value;
+  if (!key) { alert('Paste a key first.'); return; }
+  state.videoKey = key;
+  state.videoProvider = provider;
+  document.getElementById('saveKeyBtn').textContent = '✓ Saved for session';
+  setTimeout(() => { document.getElementById('saveKeyBtn').textContent = 'Save for this session'; }, 1800);
+});
+</script>
+</body>
+</html>
